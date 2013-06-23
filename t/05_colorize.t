@@ -21,7 +21,7 @@ subtest 'colorize ok' => sub {
     };
 
     my $expected_core_index     = colored['green'],  'Depends on 2 core modules:';
-    my $expected_non_core_index = colored['yellow'], 'Depends on 3 non-core modules:';
+    my $expected_non_core_index = colored['yellow'], 'Depends on 8 non-core modules:';
 
     is $got, <<EOS;
 Target: perl-5.008001
@@ -29,9 +29,14 @@ $expected_core_index
 \tCarp
 \tGetopt::Long
 $expected_non_core_index
+\tAcme
+\tAcme::Anything
+\tAcme::Buffy
 \tFurl
 \tJSON
+\tModule::Build
 \tModule::CoreList
+\tTest::Perl::Critic
 EOS
 };
 

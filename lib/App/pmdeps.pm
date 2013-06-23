@@ -10,7 +10,7 @@ use JSON;
 use Module::CoreList;
 use Term::ANSIColor qw/colored/;
 
-our $VERSION = "0.01";
+our $VERSION = "0.02";
 
 $ENV{ANSI_COLORS_DISABLED} = 1 if $^O eq 'MSWin32';
 
@@ -29,12 +29,22 @@ sub run {
         't|timeout=i'      => \$self->{timeout},
         'p|perl-version=f' => \$self->{perl_version},
         'l|local=s',       => \$self->{local},
+        'without-phase=s@' => \$self->{without_phase},
+        'without-type=s@'  => \$self->{without_type},
         'h|help!'          => \$self->{usage},
         'v|version!'       => \$self->{version},
     ) or $self->show_usage;
 
     $self->show_version if $self->{version};
     $self->show_usage   if $self->{usage};
+
+    if ($self->{without_phase}) {
+        @{$self->{without_phase}} = split( /,/, join(',', @{$self->{without_phase}}) );
+    }
+
+    if ($self->{without_type}) {
+        @{$self->{without_type}} = split( /,/, join(',', @{$self->{without_type}}) );
+    }
 
     $self->show_short_usage unless ( @ARGV || $self->{local} );
 
@@ -122,7 +132,15 @@ sub _fetch_deps_from_metacpan {
 EOQ
 
     my $content = decode_json( $res->{content} );
-    return $content->{hits}->{hits}[0]->{fields}->{dependency};
+    my @deps    = @{$content->{hits}->{hits}[0]->{fields}->{dependency}};
+    for my $phase (@{$self->{without_phase}}) {
+        @deps = grep { $_->{phase} ne $phase } @deps;
+    }
+    for my $type (@{$self->{without_type}}) {
+        @deps = grep { $_->{relationship} ne $type } @deps;
+    }
+
+    return \@deps;
 }
 
 sub _fetch_deps_from_metadata {
@@ -146,8 +164,20 @@ sub _fetch_deps_from_metadata {
     my $json = decode_json(<$fh>);
     close $fh;
 
+    my @prereqs;
+    for my $phase ( keys %{ $json->{prereqs} } ) {
+        unless ( grep { $phase eq $_ } @{ $self->{without_phase} } ) {
+            push @prereqs, $json->{prereqs}->{$phase};
+        }
+    }
+
+    for my $prereq (@prereqs) {
+        for my $type ( @{ $self->{without_type} } ) {
+            delete $prereq->{$type};
+        }
+    }
+
     my @requires;
-    my @prereqs = values %{ $json->{prereqs} };
     my @modules = map { keys %$_ } map { values %$_ } @prereqs;
     for my $module ( @modules ) {
         push @requires, { module => $module };

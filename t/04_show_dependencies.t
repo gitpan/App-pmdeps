@@ -54,40 +54,120 @@ EOS
 };
 
 subtest 'local' => sub {
-    my $app = App::pmdeps->new;
-
     subtest 'use meta_json' => sub {
-        my ($got) = capture {
-            $app->run('-l', catfile($FindBin::Bin, 'resource'), '-p', '5.008001');
-        };
-        is $got, <<EOS;
+        subtest 'all' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-l', catfile($FindBin::Bin, 'resource'), '-p', '5.008001');
+            };
+            is $got, <<EOS;
 Target: perl-5.008001
 Depends on 2 core modules:
 \tCarp
 \tGetopt::Long
-Depends on 3 non-core modules:
+Depends on 8 non-core modules:
+\tAcme
+\tAcme::Anything
+\tAcme::Buffy
+\tFurl
+\tJSON
+\tModule::Build
+\tModule::CoreList
+\tTest::Perl::Critic
+EOS
+        };
+
+        subtest 'without some phases' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-l', catfile($FindBin::Bin, 'resource'), '-p', '5.008001', '--without-phase', 'configure,develop');
+            };
+            is $got, <<EOS;
+Target: perl-5.008001
+Depends on 2 core modules:
+\tCarp
+\tGetopt::Long
+Depends on 5 non-core modules:
+\tAcme
+\tAcme::Anything
 \tFurl
 \tJSON
 \tModule::CoreList
 EOS
+        };
+
+        subtest 'without some types' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-l', catfile($FindBin::Bin, 'resource'), '-p', '5.008001', '--without-type', 'recommends,suggests');
+            };
+            is $got, <<EOS;
+Target: perl-5.008001
+Depends on 2 core modules:
+\tCarp
+\tGetopt::Long
+Depends on 5 non-core modules:
+\tFurl
+\tJSON
+\tModule::Build
+\tModule::CoreList
+\tTest::Perl::Critic
+EOS
+        };
     };
 
     subtest 'use mymeta_json' => sub {
-        my ($got) = capture {
-            $app->run('-p', '5.008001', '--local', catfile($FindBin::Bin, 'resource', 'mymeta_only'));
-        };
-        is $got, <<EOS;
+        subtest 'all' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-p', '5.008001', '--local', catfile($FindBin::Bin, 'resource', 'mymeta_only'));
+            };
+            is $got, <<EOS;
 Target: perl-5.008001
 Depends on 1 core module:
 \tCarp
-Depends on 2 non-core modules:
+Depends on 7 non-core modules:
+\tAcme
+\tAcme::Anything
+\tAcme::Buffy
+\tFurl
+\tJSON
+\tModule::Build
+\tTest::Perl::Critic
+EOS
+        };
+
+        subtest 'without some phases' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-p', '5.008001', '--local', catfile($FindBin::Bin, 'resource', 'mymeta_only'), '--without-phase', 'configure,develop');
+            };
+            is $got, <<EOS;
+Target: perl-5.008001
+Depends on 1 core module:
+\tCarp
+Depends on 4 non-core modules:
+\tAcme
+\tAcme::Anything
 \tFurl
 \tJSON
 EOS
+        };
+
+        subtest 'without some types' => sub {
+            my ($got) = capture {
+                App::pmdeps->new->run('-p', '5.008001', '--local', catfile($FindBin::Bin, 'resource', 'mymeta_only'), '--without-type', 'recommends,suggests');
+            };
+            is $got, <<EOS;
+Target: perl-5.008001
+Depends on 1 core module:
+\tCarp
+Depends on 4 non-core modules:
+\tFurl
+\tJSON
+\tModule::Build
+\tTest::Perl::Critic
+EOS
+        };
     };
 
     subtest 'not exists META.json or MYMETA.json' => sub {
-        eval { $app->run( '-l', catfile($FindBin::Bin) ) };
+        eval { App::pmdeps->new->run( '-l', catfile($FindBin::Bin) ) };
         ok $@, 'dies ok';
     };
 };
